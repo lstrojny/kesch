@@ -57,3 +57,15 @@ $cache->store('key', 'value', function($key, $value) {
     // Update another storage
 });
 ```
+
+### Store key along with some tags
+```php
+<?php
+$cache->store(new Kesch\Key('test', array('tag1', 'tag2')), 'value');
+```
+
+### Delete values with tags
+```php
+<?php
+$cache->delete(new Kesch\Tags(array('tag1', 'tag2')));
+```

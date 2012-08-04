@@ -28,6 +28,11 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->cache = new Cache($this->storage);
     }
 
+    /**
+     * Loading
+     */
+
+
     public function testLoadingSingleKey()
     {
         $this->expectStorageLoad();
@@ -42,7 +47,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue($this->success);
     }
 
-    public function testPassingInvalidCallable()
+    public function testPassingInvalidCallableToLoad()
     {
         $this->expectKeyValidation(true);
         $this->setExpectedException(
@@ -52,7 +57,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->cache->load('key', 'notCallable');
     }
 
-    public function testPassingInvalidKey()
+    public function testPassingInvalidKeyToLoad()
     {
         $this->expectKeyValidation(false);
         $this->setExpectedException(
@@ -61,6 +66,16 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         );
         $this->cache->load('key');
     }
+
+    public function testPassingKeyObjectToLoad()
+    {
+        $this->expectStorageLoad();
+        $this->assertSame('onSuccess', $this->cache->load(new Key('key'), array($this, 'onSuccess')));
+    }
+
+    /**
+     * Saving
+     */
 
     public function testSavingSingleKey()
     {
@@ -120,6 +135,12 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         );
         $this->expectKeyValidation(false);
         $this->cache->save('key', 'value');
+    }
+
+    public function testPassingKeyObjectToSave()
+    {
+        $this->expectKeyValidation();
+        $this->cache->save(new Key('key'), 'value');
     }
 
     public function onSuccess(Result $result)

@@ -162,11 +162,6 @@ class ClientTest extends \PHPUnit_Framework_TestCase
             ->method('isValidKey')
             ->with('key')
             ->will($this->returnValue(true));
-        $this->storage
-            ->expects($this->at(1))
-            ->method('save')
-            ->with('key', 'value')
-            ->will($this->returnValue(true));
         $this->setExpectedException(
             'Kesch\Exception\InvalidCallbackException',
             'Kesch\Cache::save() expected parameter 3 to be valid callback, string given'

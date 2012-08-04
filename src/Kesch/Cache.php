@@ -30,6 +30,9 @@ class Cache implements CacheInterface
     public function save($key, $value, $onSuccess = null)
     {
         InvalidKeyException::assertValidKeyForStorage($this->storage, $key, __METHOD__, 1);
+        if ($onSuccess !== null) {
+            InvalidCallbackException::assertValidCallback($onSuccess, __METHOD__, 3);
+        }
 
         if (is_callable($value)) {
             $value = call_user_func($value, $key);
@@ -37,17 +40,15 @@ class Cache implements CacheInterface
 
         $result = $this->storage->save($key, $value);
 
-        if ($result && $onSuccess !== null) {
-            InvalidCallbackException::assertValidCallback($onSuccess, __METHOD__, 3);
-
-            try {
-                return call_user_func($onSuccess, $key, $value);
-            } catch (Exception $e) {
-                $this->storage->delete($key);
-                return false;
-            }
+        if ($onSuccess === null || $result === false) {
+            return $result;
         }
 
-        return $result;
+        try {
+            return call_user_func($onSuccess, $key, $value);
+        } catch (Exception $e) {
+            $this->storage->delete($key);
+            return false;
+        }
     }
 }

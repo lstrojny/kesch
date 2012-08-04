@@ -31,10 +31,15 @@ class ClientTest extends \PHPUnit_Framework_TestCase
     public function testLoadingSingleKey()
     {
         $this->storage
-            ->expects($this->once())
+            ->expects($this->at(0))
+            ->method('isValidKey')
+            ->with('key')
+            ->will($this->returnValue(true));
+        $this->storage
+            ->expects($this->at(1))
             ->method('load')
             ->with('key')
-            ->will($this->returnValue(new Result(true, 'foo')));
+            ->will($this->returnValue(new Result(true, 'key', 'cached value')));
 
         $result = $this->cache->load('key');
         $this->onSuccess($result);
@@ -43,10 +48,15 @@ class ClientTest extends \PHPUnit_Framework_TestCase
     public function testLoadingSingleKeyAndPassingCallback()
     {
         $this->storage
-            ->expects($this->once())
+            ->expects($this->at(0))
+            ->method('isValidKey')
+            ->with('key')
+            ->will($this->returnValue(true));
+        $this->storage
+            ->expects($this->at(1))
             ->method('load')
             ->with('key')
-            ->will($this->returnValue(new Result(true, 'foo')));
+            ->will($this->returnValue(new Result(true, 'key', 'cached value')));
 
         $this->assertSame('onSuccess', $this->cache->load('key', array($this, 'onSuccess')));
         $this->assertTrue($this->success);
@@ -54,18 +64,42 @@ class ClientTest extends \PHPUnit_Framework_TestCase
 
     public function testPassingInvalidCallable()
     {
+        $this->storage
+            ->expects($this->at(0))
+            ->method('isValidKey')
+            ->with('key')
+            ->will($this->returnValue(true));
         $this->setExpectedException(
-            'Kesch\Exception\InvalidArgumentException',
+            'Kesch\Exception\InvalidCallbackException',
             'Kesch\Cache::load() expected parameter 2 to be valid callback, string given'
         );
 
         $this->cache->load('key', 'notCallable');
     }
 
+    public function testPassingInvalidKey()
+    {
+        $this->setExpectedException(
+            'Kesch\Exception\InvalidKeyException',
+            sprintf('Kesch\Cache::load() expected parameter 1 to be a valid key for %s, "key" given', get_class($this->storage))
+        );
+        $this->storage
+            ->expects($this->once())
+            ->method('isValidKey')
+            ->with('key')
+            ->will($this->returnValue(false));
+        $this->cache->load('key');
+    }
+
     public function testSavingSingleKey()
     {
         $this->storage
-            ->expects($this->once())
+            ->expects($this->at(0))
+            ->method('isValidKey')
+            ->with('key')
+            ->will($this->returnValue(true));
+        $this->storage
+            ->expects($this->at(1))
             ->method('save')
             ->with('key', 'value')
             ->will($this->returnValue(true));
@@ -76,7 +110,12 @@ class ClientTest extends \PHPUnit_Framework_TestCase
     public function testSavingSingleKeyByCallable()
     {
         $this->storage
-            ->expects($this->once())
+            ->expects($this->at(0))
+            ->method('isValidKey')
+            ->with('key')
+            ->will($this->returnValue(true));
+        $this->storage
+            ->expects($this->at(1))
             ->method('save')
             ->with('key', 'value')
             ->will($this->returnValue(true));
@@ -84,35 +123,87 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue($this->cache->save('key', array($this, 'getValue')));
     }
 
-    public function testSavingSingleKeyWithSpecificLifetime()
+    public function testSavingSingleKeyAndCallingSuccessCallback()
     {
         $this->storage
-            ->expects($this->once())
+            ->expects($this->at(0))
+            ->method('isValidKey')
+            ->with('key')
+            ->will($this->returnValue(true));
+        $this->storage
+            ->expects($this->at(1))
             ->method('save')
-            ->with('key', 'value', 100)
+            ->with('key', 'value')
             ->will($this->returnValue(true));
 
-        $this->assertTrue($this->cache->save('key', 'value', 100));
+        $this->assertSame('saveSuccess', $this->cache->save('key', 'value', array($this, 'onSaveSuccess')));
     }
 
-    public function testSavingSingleKeyByCallableWithSpecificLifetime()
+    public function testSavingSingleKeyWithoutSuccessDoesNotCallSuccessCallback()
     {
         $this->storage
-            ->expects($this->once())
-            ->method('save')
-            ->with('key', 'value', 100)
+            ->expects($this->at(0))
+            ->method('isValidKey')
+            ->with('key')
             ->will($this->returnValue(true));
+        $this->storage
+            ->expects($this->at(1))
+            ->method('save')
+            ->with('key', 'value')
+            ->will($this->returnValue(false));
 
-        $this->assertTrue($this->cache->save('key', array($this, 'getValue'), 100));
+        $this->assertFalse($this->cache->save('key', 'value', array($this, 'onSaveSuccess')));
+    }
+
+    public function testSavingSingleKeyAndPassingInvalidSuccessCallback()
+    {
+        $this->storage
+            ->expects($this->at(0))
+            ->method('isValidKey')
+            ->with('key')
+            ->will($this->returnValue(true));
+        $this->storage
+            ->expects($this->at(1))
+            ->method('save')
+            ->with('key', 'value')
+            ->will($this->returnValue(true));
+        $this->setExpectedException(
+            'Kesch\Exception\InvalidCallbackException',
+            'Kesch\Cache::save() expected parameter 3 to be valid callback, string given'
+        );
+
+        $this->cache->save('key', 'value', 'invalidCallback');
+    }
+
+    public function testSavingKeysAsksForKeyValidityFirst()
+    {
+        $this->setExpectedException(
+            'Kesch\Exception\InvalidKeyException',
+            sprintf('Kesch\Cache::save() expected parameter 1 to be a valid key for %s, "key" given', get_class($this->storage))
+        );
+        $this->storage
+            ->expects($this->once())
+            ->method('isValidKey')
+            ->with('key')
+            ->will($this->returnValue(false));
+        $this->cache->save('key', 'value');
     }
 
     public function onSuccess(Result $result)
     {
         $this->assertTrue($result->isHit());
-        $this->assertSame('foo', $result->getValue());
+        $this->assertSame('cached value', $result->getValue());
         $this->success = true;
 
         return 'onSuccess';
+    }
+
+    public function onSaveSuccess($key, $value)
+    {
+        $this->assertSame('key', $key);
+        $this->assertSame('value', $value);
+
+        return 'saveSuccess';
     }
 
     public function getValue($key)

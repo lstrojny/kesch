@@ -1,7 +1,6 @@
 <?php
 namespace Kesch\Exception;
 
-use Exception;
 
 class InvalidCallbackException extends InvalidArgumentException
 {

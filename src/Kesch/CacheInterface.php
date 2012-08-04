@@ -3,7 +3,18 @@ namespace Kesch;
 
 interface CacheInterface
 {
-    public function get($key, $onSuccess = null, $onFailure = null);
+    /**
+     * @param string $key
+     * @param callable $onSuccess
+     * @return Result|mixed
+     */
+    public function load($key, $onSuccess = null);
 
-    public function save($key, $value, $ttl = null);
+    /**
+     * @param string $key
+     * @param integer|string|object|array|callable $value
+     * @param callable $onSuccess
+     * @return bool
+     */
+    public function save($key, $value, $onSuccess = null);
 }

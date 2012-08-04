@@ -4,6 +4,7 @@ namespace Kesch;
 use Kesch\Exception\InvalidCallbackException;
 use Kesch\Exception\InvalidKeyException;
 use Kesch\Storage\StorageInterface;
+use Exception;
 
 class Cache implements CacheInterface
 {
@@ -38,7 +39,13 @@ class Cache implements CacheInterface
 
         if ($result && $onSuccess !== null) {
             InvalidCallbackException::assertValidCallback($onSuccess, __METHOD__, 3);
-            return call_user_func($onSuccess, $key, $value);
+
+            try {
+                return call_user_func($onSuccess, $key, $value);
+            } catch (Exception $e) {
+                $this->storage->delete($key);
+                return false;
+            }
         }
 
         return $result;

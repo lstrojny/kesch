@@ -175,6 +175,30 @@ class ClientTest extends \PHPUnit_Framework_TestCase
         $this->cache->save('key', 'value', 'invalidCallback');
     }
 
+    public function testSavingSingleKeyAndThrowingExceptionInSuccessCallbackDeletesPreviouslySavedKey()
+    {
+        $this->storage
+            ->expects($this->at(0))
+            ->method('isValidKey')
+            ->with('key')
+            ->will($this->returnValue(true));
+        $this->storage
+            ->expects($this->at(1))
+            ->method('save')
+            ->with('key', 'value')
+            ->will($this->returnValue(true));
+        $this->storage
+            ->expects($this->at(2))
+            ->method('delete')
+            ->with('key')
+            ->will($this->returnValue(true));
+
+        $result = $this->cache->save('key', 'value', function() {
+            throw new \Exception('Exception in success callback');
+        });
+        $this->assertFalse($result);
+    }
+
     public function testSavingKeysAsksForKeyValidityFirst()
     {
         $this->setExpectedException(
